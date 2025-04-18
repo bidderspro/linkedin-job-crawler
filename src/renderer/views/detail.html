@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Job Details - LinkedIn Job Scraper</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Job Details</h1>
+        <div class="file-header">
+            <h2 id="filename">Loading...</h2>
+            <div class="file-actions">
+                <button id="backButton">Back</button>
+                <button id="downloadButton">Download</button>
+            </div>
+        </div>
+
+        <div class="pagination">
+            <button id="prevPage" disabled>Previous</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextPage" disabled>Next</button>
+            <select id="pageSize">
+                <option value="10">10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+            </select>
+        </div>
+
+        <div class="table-container">
+            <table id="jobTable">
+                <thead>
+                    <tr id="tableHeader">
+                        <!-- Headers will be dynamically added -->
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data rows will be dynamically added -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+    </div>
+    <script src="../detail.js"></script>
+</body>
+</html> 
