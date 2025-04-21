@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>LinkedIn Job Scraper</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>LinkedIn Job Scraper</h1>
+        
+        <div class="search-box">
+            <input type="text" id="keyword" placeholder="Job title">
+            <input type="text" id="location" placeholder="Location">
+            <input type="number" id="jobCount" value="10" min="1">
+            <button id="startScrape">Search Jobs</button>
+        </div>
+
+        <div class="results">
+            <h2>Saved Results</h2>
+            <div class="file-list" id="fileList"></div>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+    </div>
+    <script src="../renderer.js"></script>
+</body>
+</html>
