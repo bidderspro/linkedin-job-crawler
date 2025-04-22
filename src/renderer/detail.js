@@ -5,6 +5,7 @@ let allData = [];
 let currentPage = 1;
 let pageSize = 10;
 let totalPages = 1;
+let viewCounts = {};
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,6 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('filename').textContent = decodeURIComponent(filename);
     
     try {
+        // Load view counts from localStorage
+        const storedCounts = localStorage.getItem(`viewCounts_${filename}`);
+        if (storedCounts) {
+            viewCounts = JSON.parse(storedCounts);
+            console.log('Loaded view counts:', viewCounts);
+        }
+        
         // Load the CSV data
         await loadCsvData();
         
@@ -41,6 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
+        // Create a fullscreen toggle button
+        const fullscreenButton = document.createElement('button');
+        fullscreenButton.textContent = 'Expand Table';
+        fullscreenButton.className = 'expand-button';
+        fullscreenButton.addEventListener('click', toggleFullscreenTable);
+        
+        // Add it to the file-actions div
+        const fileActions = document.querySelector('.file-actions');
+        fileActions.appendChild(fullscreenButton);
+        
         document.getElementById('prevPage').addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
@@ -65,6 +83,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         showStatus(`Error: ${error.message}`, 'error');
     }
 });
+
+// Toggle fullscreen table view
+function toggleFullscreenTable() {
+    const container = document.querySelector('.container');
+    const button = document.querySelector('.expand-button');
+    
+    if (container.classList.contains('fullscreen-mode')) {
+        // Exit fullscreen
+        container.classList.remove('fullscreen-mode');
+        button.textContent = 'Expand Table';
+        document.body.style.overflow = 'auto';
+    } else {
+        // Enter fullscreen
+        container.classList.add('fullscreen-mode');
+        button.textContent = 'Shrink Table';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Save view counts to localStorage
+function saveViewCounts() {
+    localStorage.setItem(`viewCounts_${filename}`, JSON.stringify(viewCounts));
+    console.log('Saved view counts:', viewCounts);
+}
 
 async function loadCsvData() {
     showStatus('Loading data...', 'processing');
@@ -125,11 +167,46 @@ function renderTable() {
         return;
     }
     
+    // Define mandatory columns and preferred column order
+    const mandatoryColumns = ['title', 'company', 'location', 'postedDate', 'link'];
+    const preferredOrder = ['title', 'company', 'location', 'postedDate', 'applicationsCount', 'link'];
+    const allHeaders = Object.keys(allData[0]);
+    
+    // Ensure data has the postedDate field
+    if (!allHeaders.includes('postedDate')) {
+        console.log('Adding missing postedDate field to job data');
+        allData.forEach(job => {
+            if (!job.postedDate) {
+                job.postedDate = job.date ? job.date.split('T')[0] : 'Not available';
+            }
+        });
+    }
+    
+    // Create a sorted set of headers with mandatory and preferred ones first
+    const sortedHeaders = [
+        // First include all mandatory columns that exist in the data
+        ...mandatoryColumns.filter(h => allHeaders.includes(h) || h === 'postedDate'),
+        // Then include other preferred columns
+        ...preferredOrder.filter(h => !mandatoryColumns.includes(h) && allHeaders.includes(h)),
+        // Then any remaining columns except 'date' which is redundant
+        ...allHeaders.filter(h => !preferredOrder.includes(h) && h !== 'date')
+    ];
+    
+    // Remove duplicates from sortedHeaders
+    const uniqueHeaders = [...new Set(sortedHeaders)];
+    
+    console.log('Table headers:', uniqueHeaders);
+    
     // Add headers
-    const headers = Object.keys(allData[0]);
-    headers.forEach(header => {
+    uniqueHeaders.forEach(header => {
         const th = document.createElement('th');
-        th.textContent = header;
+        
+        // Render more user-friendly header names
+        let displayHeader = header;
+        if (header === 'postedDate') displayHeader = 'Posted Date';
+        if (header === 'applicationsCount') displayHeader = 'Applications';
+        
+        th.textContent = displayHeader.charAt(0).toUpperCase() + displayHeader.slice(1);
         tableHeader.appendChild(th);
     });
     
@@ -139,24 +216,102 @@ function renderTable() {
     const pageData = allData.slice(startIndex, endIndex);
     
     // Add rows
-    pageData.forEach(row => {
+    pageData.forEach((row, index) => {
         const tr = document.createElement('tr');
         
-        headers.forEach(header => {
+        uniqueHeaders.forEach(header => {
             const td = document.createElement('td');
             
             // Special handling for links
-            if (header === 'link' && row[header].startsWith('http')) {
+            if (header === 'link' && row[header] && row[header].startsWith('http')) {
                 const a = document.createElement('a');
                 a.href = row[header];
-                a.textContent = 'View';
+                const url = row[header];
+                
+                // Initialize view count if not exists
+                if (!viewCounts[url]) {
+                    viewCounts[url] = 0;
+                }
+                
+                // Show view text with count if viewed before
+                const count = viewCounts[url];
+                console.log(`Link: ${url}, Count: ${count}`);
+                a.textContent = count > 0 ? `View (${count})` : 'View';
+                
                 a.target = '_blank';
                 a.addEventListener('click', (e) => {
                     e.preventDefault();
-                    window.electronAPI.openExternal(row[header]);
+                    // Increment view count
+                    viewCounts[url]++;
+                    console.log(`Clicked: ${url}, New count: ${viewCounts[url]}`);
+                    // Update button text
+                    a.textContent = `View (${viewCounts[url]})`;
+                    // Save to localStorage
+                    saveViewCounts();
+                    // Open the link
+                    window.electronAPI.openExternal(url);
                 });
                 td.appendChild(a);
-            } else {
+            } 
+            // Special handling for posted date
+            else if (header === 'postedDate') {
+                const date = row[header] || 'Not available';
+                // Handle different date formats and make them more readable
+                if (date !== 'Not available') {
+                    try {
+                        const dateObj = new Date(date);
+                        if (!isNaN(dateObj.getTime())) {
+                            // Format the date in a more readable way (ex: "May 27, 2024")
+                            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                            const formattedDate = dateObj.toLocaleDateString('en-US', options);
+                            td.textContent = formattedDate;
+
+                            // Add a class for styling if the date is recent (within 7 days)
+                            const now = new Date();
+                            const daysDiff = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
+                            if (daysDiff <= 7) {
+                                td.classList.add('recent-post');
+                            }
+                        } else {
+                            td.textContent = date; // Use the original date string if parsing fails
+                        }
+                    } catch (dateError) {
+                        console.log(`Error formatting date ${date}:`, dateError);
+                        td.textContent = date; // Fallback to the original string
+                    }
+                } else {
+                    td.textContent = 'Not available';
+                }
+            }
+            // Special handling for application count
+            else if (header === 'applicationsCount') {
+                const count = row[header] || 'Not available';
+                td.textContent = count;
+                
+                // Add classes for styling based on application count
+                if (count !== 'Not available') {
+                    if (count === 'Under 5') {
+                        td.classList.add('very-low-applications');
+                        td.title = 'Very few applicants - great opportunity!';
+                    } else if (isNaN(count)) {
+                        // For any other text-based counts
+                        td.textContent = count;
+                    } else {
+                        // For numeric counts
+                        const appCount = parseInt(count);
+                        if (appCount < 10) {
+                            td.classList.add('low-applications');
+                            td.title = 'Low competition';
+                        } else if (appCount > 50) {
+                            td.classList.add('high-applications');
+                            td.title = 'High competition';
+                        } else {
+                            td.title = 'Moderate competition';
+                        }
+                    }
+                }
+            }
+            else {
                 td.textContent = row[header] || '';
             }
             
