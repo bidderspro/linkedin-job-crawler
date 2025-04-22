@@ -14,14 +14,6 @@
                     </p>
                 </div>
                 <div class="d-flex align-items-center">
-                    <div class="me-2">
-                        <select class="form-select form-select-sm" id="limitSelect" onchange="changeLimit(this.value)">
-                            <option value="5" <%= pagination.limit == 5 ? 'selected' : '' %>>5 per page</option>
-                            <option value="10" <%= pagination.limit == 10 ? 'selected' : '' %>>10 per page</option>
-                            <option value="25" <%= pagination.limit == 25 ? 'selected' : '' %>>25 per page</option>
-                            <option value="50" <%= pagination.limit == 50 ? 'selected' : '' %>>50 per page</option>
-                        </select>
-                    </div>
                     <div>
                         <input type="text" class="form-control form-control-sm" id="searchFilter" 
                                placeholder="Search..." onkeyup="filterTable()">
@@ -30,7 +22,7 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover" id="jobsTable">
+                <table class="table table-hover table-sticky-header" id="jobsTable">
                     <thead>
                         <tr>
                             <th>Filename</th>
@@ -71,50 +63,53 @@
             </div>
 
             <% if (pagination.total > 1) { %>
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center flex-wrap">
+                <div class="modern-pagination">
+                    <ul class="pagination mb-0">
                         <li class="page-item <%= pagination.current === 1 ? 'disabled' : '' %>">
-                            <a class="page-link" href="/?page=1&limit=<%= pagination.limit %>" aria-label="First">
-                                <i class="bi bi-chevron-double-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item <%= pagination.current === 1 ? 'disabled' : '' %>">
-                            <a class="page-link" href="/?page=<%= pagination.current - 1 %>&limit=<%= pagination.limit %>" aria-label="Previous">
+                            <a class="page-link" href="/?page=1&limit=10" aria-label="Previous">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
 
                         <% 
-                        let startPage = Math.max(1, pagination.current - 2);
-                        let endPage = Math.min(pagination.total, pagination.current + 2);
+                        let startPage = Math.max(1, pagination.current - 1);
+                        let endPage = Math.min(pagination.total, pagination.current + 1);
                         
-                        if (endPage - startPage < 4 && pagination.total > 4) {
-                            if (startPage === 1) {
-                                endPage = Math.min(startPage + 4, pagination.total);
-                            } else if (endPage === pagination.total) {
-                                startPage = Math.max(endPage - 4, 1);
-                            }
-                        }
+                        if (startPage > 1) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="/?page=1&limit=10">1</a>
+                            </li>
+                            <% if (startPage > 2) { %>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <% } %>
+                        <% } %>
                         
-                        for (let i = startPage; i <= endPage; i++) { 
-                        %>
+                        <% for (let i = startPage; i <= endPage; i++) { %>
                             <li class="page-item <%= pagination.current === i ? 'active' : '' %>">
-                                <a class="page-link" href="/?page=<%= i %>&limit=<%= pagination.limit %>"><%= i %></a>
+                                <a class="page-link" href="/?page=<%= i %>&limit=10"><%= i %></a>
+                            </li>
+                        <% } %>
+                        
+                        <% if (endPage < pagination.total) { %>
+                            <% if (endPage < pagination.total - 1) { %>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <% } %>
+                            <li class="page-item">
+                                <a class="page-link" href="/?page=<%= pagination.total %>&limit=10"><%= pagination.total %></a>
                             </li>
                         <% } %>
 
                         <li class="page-item <%= pagination.current === pagination.total ? 'disabled' : '' %>">
-                            <a class="page-link" href="/?page=<%= pagination.current + 1 %>&limit=<%= pagination.limit %>" aria-label="Next">
+                            <a class="page-link" href="/?page=<%= pagination.current + 1 %>&limit=10" aria-label="Next">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
-                        <li class="page-item <%= pagination.current === pagination.total ? 'disabled' : '' %>">
-                            <a class="page-link" href="/?page=<%= pagination.total %>&limit=<%= pagination.limit %>" aria-label="Last">
-                                <i class="bi bi-chevron-double-right"></i>
-                            </a>
-                        </li>
                     </ul>
-                </nav>
+                </div>
             <% } %>
         <% } else { %>
             <div class="alert alert-info">
@@ -126,10 +121,6 @@
 </div>
 
 <script>
-    function changeLimit(limit) {
-        window.location.href = `/?page=1&limit=${limit}`;
-    }
-
     function filterTable() {
         const input = document.getElementById('searchFilter');
         const filter = input.value.toLowerCase();

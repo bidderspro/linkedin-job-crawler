@@ -6,13 +6,318 @@
     <title>LinkedIn Job Scraper</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="/css/styles.css">
-    <meta name="theme-color" content="#0d6efd">
+    <meta name="theme-color" content="#5046e5">
     <meta name="description" content="LinkedIn Job Scraper - Search and manage job listings">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>">
+    <style>
+        :root {
+            /* Primary colors */
+            --primary-color: #5046e5;
+            --primary-dark: #3b34ac;
+            --primary-light: #7a72fa;
+            
+            /* Secondary colors */
+            --secondary-color: #ff5e94;
+            --secondary-dark: #e54174;
+            --secondary-light: #ff7da9;
+            
+            /* Neutral colors */
+            --neutral-100: #ffffff;
+            --neutral-200: #f3f4f6;
+            --neutral-300: #e5e7eb;
+            --neutral-400: #d1d5db;
+            --neutral-500: #9ca3af;
+            --neutral-600: #6b7280;
+            --neutral-700: #4b5563;
+            --neutral-800: #1f2937;
+            --neutral-900: #111827;
+            
+            /* Success, warning, error colors */
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            
+            /* Other variables */
+            --card-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+            --transition: all 0.25s ease-in-out;
+            
+            /* Gradient backgrounds */
+            --gradient-primary: linear-gradient(135deg, var(--primary-color), #6366f1);
+            --gradient-secondary: linear-gradient(135deg, var(--secondary-color), #ff8a8a);
+        }
+        
+        /* Dark theme colors */
+        [data-bs-theme="dark"] {
+            --neutral-100: #1f2937;
+            --neutral-200: #374151;
+            --neutral-300: #4b5563;
+            --neutral-700: #d1d5db;
+            --neutral-800: #e5e7eb;
+            --neutral-900: #f9fafb;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--neutral-800);
+            background-color: var(--neutral-200);
+            line-height: 1.6;
+        }
+        
+        [data-bs-theme="dark"] body {
+            background-color: var(--neutral-100);
+            color: var(--neutral-800);
+        }
+        
+        .navbar {
+            background: var(--gradient-primary) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            color: var(--neutral-100) !important;
+        }
+        
+        .nav-link {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.85) !important;
+            transition: var(--transition);
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: var(--neutral-100) !important;
+            transform: translateY(-1px);
+        }
+        
+        .card {
+            border: none;
+            box-shadow: var(--card-shadow);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color) !important;
+            color: var(--neutral-100) !important;
+            border-bottom: none;
+            padding: 16px 20px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-dark);
+        }
+        
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background-color: #0ca876;
+            border-color: #0ca876;
+        }
+        
+        .btn-danger {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+        }
+        
+        .btn-danger:hover {
+            background-color: #dc2626;
+            border-color: #dc2626;
+        }
+        
+        .btn-light {
+            color: var(--primary-color);
+            background-color: rgba(255, 255, 255, 0.9);
+            border-color: transparent;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+        
+        .btn-light:hover {
+            background-color: var(--neutral-100);
+            color: var(--primary-dark);
+        }
+        
+        /* Theme toggle switch */
+        .theme-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 26px;
+        }
+        
+        .theme-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .theme-toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            transition: var(--transition);
+            border-radius: 26px;
+        }
+        
+        .theme-toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: var(--transition);
+            border-radius: 50%;
+        }
+        
+        input:checked + .theme-toggle-slider {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+        
+        input:checked + .theme-toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .theme-toggle-icons {
+            position: absolute;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 6px;
+            box-sizing: border-box;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            font-size: 12px;
+            color: white;
+        }
+        
+        /* Modern pagination styles updated */
+        .modern-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            border-radius: 30px;
+            padding: 10px 15px;
+            box-shadow: 0 8px 16px rgba(99, 102, 241, 0.2);
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .modern-pagination .page-item .page-link {
+            background: transparent;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 50%;
+            margin: 0 2px;
+            transition: var(--transition);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modern-pagination .page-item.active .page-link {
+            background-color: white;
+            color: #3b82f6;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: scale(1.1);
+        }
+
+        .modern-pagination .page-item .page-link:hover:not(.active) {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .modern-pagination .page-item.disabled .page-link {
+            color: rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+        }
+
+        .modern-pagination .page-stats {
+            color: white;
+            margin-left: 15px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .modern-pagination-white {
+            background: var(--neutral-100);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .modern-pagination-white .page-item .page-link {
+            color: var(--neutral-700);
+        }
+
+        .modern-pagination-white .page-item.active .page-link {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .modern-pagination-white .page-stats {
+            color: var(--neutral-700);
+        }
+
+        .table-sticky-header thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .table-sticky-header th {
+            background-color: var(--primary-color) !important;
+            color: var(--neutral-100) !important;
+        }
+        
+        footer {
+            background-color: var(--neutral-200) !important;
+            color: var(--neutral-700);
+            margin-top: 2rem;
+            padding: 1.2rem 0;
+            border-top: 1px solid var(--neutral-300);
+        }
+        
+        [data-bs-theme="dark"] footer {
+            background-color: var(--neutral-200) !important;
+            border-top: 1px solid var(--neutral-300);
+        }
+        
+        .btn-floating {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(80, 70, 229, 0.4);
+            transition: var(--transition);
+        }
+        
+        .btn-floating:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(80, 70, 229, 0.5);
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-linkedin me-2"></i><span class="d-none d-sm-inline">LinkedIn Job Scraper</span><span class="d-inline d-sm-none">Job Scraper</span>
@@ -52,13 +357,13 @@
         <%- body %>
     </div>
 
-    <footer class="bg-light py-3 mt-5">
+    <footer class="py-3 mt-5">
         <div class="container text-center">
             <p class="mb-0">LinkedIn Job Scraper &copy; <%= new Date().getFullYear() %></p>
         </div>
     </footer>
 
-    <button type="button" class="btn btn-primary btn-floating btn-lg" id="btn-back-to-top" 
+    <button type="button" class="btn btn-floating btn-lg" id="btn-back-to-top" 
             style="position: fixed; bottom: 20px; right: 20px; display: none; border-radius: 50%; width: 45px; height: 45px;">
         <i class="bi bi-arrow-up"></i>
     </button>
@@ -92,7 +397,7 @@
             
             function updateThemeColorMeta(theme) {
                 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-                metaThemeColor.setAttribute('content', theme === 'dark' ? '#212529' : '#0d6efd');
+                metaThemeColor.setAttribute('content', theme === 'dark' ? '#1f2937' : '#5046e5');
             }
         });
         

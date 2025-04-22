@@ -3,7 +3,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const filename = urlParams.get('file');
 let allData = [];
 let currentPage = 1;
-let pageSize = 10;
+let pageSize = 10; // Default to 10 records per page
 let totalPages = 1;
 let viewCounts = {};
 
@@ -49,57 +49,133 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        // Create a fullscreen toggle button
-        const fullscreenButton = document.createElement('button');
-        fullscreenButton.textContent = 'Expand Table';
-        fullscreenButton.className = 'expand-button';
-        fullscreenButton.addEventListener('click', toggleFullscreenTable);
+        // Replace the old pagination controls with modern pagination
+        createModernPagination();
         
-        // Add it to the file-actions div
-        const fileActions = document.querySelector('.file-actions');
-        fileActions.appendChild(fullscreenButton);
-        
-        document.getElementById('prevPage').addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderTable();
-            }
-        });
-        
-        document.getElementById('nextPage').addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderTable();
-            }
-        });
-        
-        document.getElementById('pageSize').addEventListener('change', (e) => {
-            pageSize = parseInt(e.target.value);
-            currentPage = 1;
-            calculatePagination();
-            renderTable();
-        });
     } catch (error) {
         showStatus(`Error: ${error.message}`, 'error');
     }
 });
 
-// Toggle fullscreen table view
-function toggleFullscreenTable() {
-    const container = document.querySelector('.container');
-    const button = document.querySelector('.expand-button');
-    
-    if (container.classList.contains('fullscreen-mode')) {
-        // Exit fullscreen
-        container.classList.remove('fullscreen-mode');
-        button.textContent = 'Expand Table';
-        document.body.style.overflow = 'auto';
-    } else {
-        // Enter fullscreen
-        container.classList.add('fullscreen-mode');
-        button.textContent = 'Shrink Table';
-        document.body.style.overflow = 'hidden';
+// Create modern pagination controls
+function createModernPagination() {
+    // Remove old pagination controls
+    const oldPagination = document.querySelector('.pagination');
+    if (oldPagination) {
+        oldPagination.remove();
     }
+    
+    // Create new modern pagination div
+    const modernPagination = document.createElement('div');
+    modernPagination.className = 'modern-pagination';
+    
+    // Insert after the table-container
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer.nextSibling) {
+        tableContainer.parentNode.insertBefore(modernPagination, tableContainer.nextSibling);
+    } else {
+        tableContainer.parentNode.appendChild(modernPagination);
+    }
+    
+    // Update pagination UI
+    updateModernPagination();
+}
+
+// Update the modern pagination UI
+function updateModernPagination() {
+    const modernPagination = document.querySelector('.modern-pagination');
+    if (!modernPagination) return;
+    
+    const startIndex = (currentPage - 1) * pageSize + 1;
+    const endIndex = Math.min(currentPage * pageSize, allData.length);
+    
+    modernPagination.innerHTML = `
+        <ul class="pagination mb-0">
+            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" id="prevPageBtn">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            
+            ${currentPage > 2 ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="1">1</a>
+                </li>
+            ` : ''}
+            
+            ${currentPage > 3 ? `
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            ` : ''}
+            
+            ${currentPage > 1 ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${currentPage - 1}">${currentPage - 1}</a>
+                </li>
+            ` : ''}
+            
+            <li class="page-item active">
+                <a class="page-link" href="#" data-page="${currentPage}">${currentPage}</a>
+            </li>
+            
+            ${currentPage < totalPages ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${currentPage + 1}">${currentPage + 1}</a>
+                </li>
+            ` : ''}
+            
+            ${currentPage < totalPages - 2 ? `
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+            ` : ''}
+            
+            ${currentPage < totalPages - 1 ? `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a>
+                </li>
+            ` : ''}
+            
+            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" id="nextPageBtn">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    `;
+    
+    // Add event listeners to new pagination controls
+    document.getElementById('prevPageBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+            currentPage--;
+            renderTable();
+            updateModernPagination();
+        }
+    });
+    
+    document.getElementById('nextPageBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderTable();
+            updateModernPagination();
+        }
+    });
+    
+    // Add event listeners to page number links
+    document.querySelectorAll('.page-link[data-page]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = parseInt(e.target.dataset.page);
+            if (page && page !== currentPage) {
+                currentPage = page;
+                renderTable();
+                updateModernPagination();
+            }
+        });
+    });
 }
 
 // Save view counts to localStorage
@@ -140,13 +216,20 @@ async function loadCsvData() {
 
 function calculatePagination() {
     totalPages = Math.ceil(allData.length / pageSize);
-    updatePaginationControls();
+    // Use modern pagination update instead
+    if (document.querySelector('.modern-pagination')) {
+        updateModernPagination();
+    } else {
+        updatePaginationControls();
+    }
 }
 
 function updatePaginationControls() {
     const prevButton = document.getElementById('prevPage');
     const nextButton = document.getElementById('nextPage');
     const pageInfo = document.getElementById('pageInfo');
+    
+    if (!prevButton || !nextButton || !pageInfo) return;
     
     prevButton.disabled = currentPage <= 1;
     nextButton.disabled = currentPage >= totalPages;
@@ -252,67 +335,9 @@ function renderTable() {
                     window.electronAPI.openExternal(url);
                 });
                 td.appendChild(a);
-            } 
-            // Special handling for posted date
-            else if (header === 'postedDate') {
-                const date = row[header] || 'Not available';
-                // Handle different date formats and make them more readable
-                if (date !== 'Not available') {
-                    try {
-                        const dateObj = new Date(date);
-                        if (!isNaN(dateObj.getTime())) {
-                            // Format the date in a more readable way (ex: "May 27, 2024")
-                            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-                            const formattedDate = dateObj.toLocaleDateString('en-US', options);
-                            td.textContent = formattedDate;
-
-                            // Add a class for styling if the date is recent (within 7 days)
-                            const now = new Date();
-                            const daysDiff = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
-                            if (daysDiff <= 7) {
-                                td.classList.add('recent-post');
-                            }
-                        } else {
-                            td.textContent = date; // Use the original date string if parsing fails
-                        }
-                    } catch (dateError) {
-                        console.log(`Error formatting date ${date}:`, dateError);
-                        td.textContent = date; // Fallback to the original string
-                    }
-                } else {
-                    td.textContent = 'Not available';
-                }
-            }
-            // Special handling for application count
-            else if (header === 'applicationsCount') {
-                const count = row[header] || 'Not available';
-                td.textContent = count;
-                
-                // Add classes for styling based on application count
-                if (count !== 'Not available') {
-                    if (count === 'Under 5') {
-                        td.classList.add('very-low-applications');
-                        td.title = 'Very few applicants - great opportunity!';
-                    } else if (isNaN(count)) {
-                        // For any other text-based counts
-                        td.textContent = count;
-                    } else {
-                        // For numeric counts
-                        const appCount = parseInt(count);
-                        if (appCount < 10) {
-                            td.classList.add('low-applications');
-                            td.title = 'Low competition';
-                        } else if (appCount > 50) {
-                            td.classList.add('high-applications');
-                            td.title = 'High competition';
-                        } else {
-                            td.title = 'Moderate competition';
-                        }
-                    }
-                }
-            }
-            else {
-                td.textContent = row[header] || '';
+            } else {
+                // For non-link cells, display the value
+                td.textContent = row[header] !== undefined ? row[header] : '';
             }
             
             tr.appendChild(td);
@@ -321,7 +346,12 @@ function renderTable() {
         tableBody.appendChild(tr);
     });
     
-    updatePaginationControls();
+    // Update the pagination controls
+    if (document.querySelector('.modern-pagination')) {
+        updateModernPagination();
+    } else {
+        updatePaginationControls();
+    }
 }
 
 function showStatus(message, type) {

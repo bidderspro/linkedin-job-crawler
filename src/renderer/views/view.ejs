@@ -29,7 +29,7 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-striped table-hover" id="recordsTable">
+                <table class="table table-striped table-hover table-sticky-header" id="recordsTable">
                     <thead class="table-dark">
                         <tr>
                             <% 
@@ -43,14 +43,23 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <% records.forEach(record => { %>
+                        <% 
+                        const page = parseInt(query.page) || 1;
+                        const limit = 10;
+                        const startIndex = (page - 1) * limit;
+                        const endIndex = Math.min(startIndex + limit, records.length);
+                        const totalPages = Math.ceil(records.length / limit);
+                        
+                        for (let i = startIndex; i < endIndex; i++) {
+                            const record = records[i];
+                        %>
                             <tr>
                                 <% 
-                                let i = 0;
+                                let j = 0;
                                 Object.entries(record).forEach(([key, value]) => { 
-                                    const isHiddenOnSmall = i > 1;
+                                    const isHiddenOnSmall = j > 1;
                                     const columnClass = isHiddenOnSmall ? 'd-none d-md-table-cell' : '';
-                                    i++;
+                                    j++;
                                 %>
                                     <td class="<%= columnClass %>">
                                         <% if (value && value.toString().startsWith('http')) { %>
@@ -63,10 +72,61 @@
                                     </td>
                                 <% }); %>
                             </tr>
-                        <% }); %>
+                        <% } %>
                     </tbody>
                 </table>
             </div>
+
+            <% if (totalPages > 1) { %>
+                <div class="modern-pagination">
+                    <ul class="pagination mb-0">
+                        <li class="page-item <%= page === 1 ? 'disabled' : '' %>">
+                            <a class="page-link" href="/view/<%= filename %>?page=1" aria-label="Previous">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        <% 
+                        const startPageNum = Math.max(1, page - 1);
+                        const endPageNum = Math.min(totalPages, page + 1);
+                        
+                        if (startPageNum > 1) { %>
+                            <li class="page-item">
+                                <a class="page-link" href="/view/<%= filename %>?page=1">1</a>
+                            </li>
+                            <% if (startPageNum > 2) { %>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <% } %>
+                        <% } %>
+                        
+                        <% for (let i = startPageNum; i <= endPageNum; i++) { %>
+                            <li class="page-item <%= page === i ? 'active' : '' %>">
+                                <a class="page-link" href="/view/<%= filename %>?page=<%= i %>"><%= i %></a>
+                            </li>
+                        <% } %>
+                        
+                        <% if (endPageNum < totalPages) { %>
+                            <% if (endPageNum < totalPages - 1) { %>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <% } %>
+                            <li class="page-item">
+                                <a class="page-link" href="/view/<%= filename %>?page=<%= totalPages %>"><%= totalPages %></a>
+                            </li>
+                        <% } %>
+
+                        <li class="page-item <%= page === totalPages ? 'disabled' : '' %>">
+                            <a class="page-link" href="/view/<%= filename %>?page=<%= page + 1 %>" aria-label="Next">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                    <span class="page-stats">Showing <%= startIndex + 1 %> to <%= endIndex %> of <%= records.length %> entries</span>
+                </div>
+            <% } %>
         <% } else { %>
             <div class="alert alert-warning m-3">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>No records found in this file or invalid CSV format.
