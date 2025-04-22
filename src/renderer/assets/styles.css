@@ -592,4 +592,68 @@ th:nth-child(6), td:nth-child(6) { /* Link column */
   th, td {
     padding: 10px;
   }
+}
+
+/* Green dot indicator for new jobs */
+.title-with-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-job-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.new-job-indicator::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: rgba(16, 185, 129, 0.3);
+  border-radius: 50%;
+  top: -2px;
+  left: -2px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+.new-job-indicator:hover::before {
+  content: "New job posted within the last 7 days";
+  position: absolute;
+  bottom: 15px;
+  left: -10px;
+  background-color: var(--neutral-800);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.recent-job td {
+  color: var(--neutral-800);
 } 

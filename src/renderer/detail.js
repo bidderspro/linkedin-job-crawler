@@ -184,6 +184,23 @@ function saveViewCounts() {
     console.log('Saved view counts:', viewCounts);
 }
 
+// Check if a job is recently posted (within the last 7 days)
+function isRecentJob(dateString) {
+    if (!dateString || dateString === 'Not available') return false;
+    
+    try {
+        const jobDate = new Date(dateString);
+        if (isNaN(jobDate.getTime())) return false;
+        
+        const now = new Date();
+        const daysDiff = Math.floor((now - jobDate) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 7;
+    } catch (error) {
+        console.error('Error parsing date:', error);
+        return false;
+    }
+}
+
 async function loadCsvData() {
     showStatus('Loading data...', 'processing');
     
@@ -302,11 +319,38 @@ function renderTable() {
     pageData.forEach((row, index) => {
         const tr = document.createElement('tr');
         
+        // Check if the job is recent
+        const isRecent = isRecentJob(row.postedDate);
+        if (isRecent) {
+            tr.classList.add('recent-job');
+        }
+        
         uniqueHeaders.forEach(header => {
             const td = document.createElement('td');
             
+            // Special handling for title column and recent jobs
+            if (header === 'title') {
+                // Create title content with green dot for recent jobs
+                if (isRecent) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'title-with-indicator';
+                    
+                    const dot = document.createElement('span');
+                    dot.className = 'new-job-indicator';
+                    dot.title = 'Posted within the last 7 days';
+                    
+                    const titleText = document.createElement('span');
+                    titleText.textContent = row[header] !== undefined ? row[header] : '';
+                    
+                    wrapper.appendChild(dot);
+                    wrapper.appendChild(titleText);
+                    td.appendChild(wrapper);
+                } else {
+                    td.textContent = row[header] !== undefined ? row[header] : '';
+                }
+            }
             // Special handling for links
-            if (header === 'link' && row[header] && row[header].startsWith('http')) {
+            else if (header === 'link' && row[header] && row[header].startsWith('http')) {
                 const a = document.createElement('a');
                 a.href = row[header];
                 const url = row[header];
