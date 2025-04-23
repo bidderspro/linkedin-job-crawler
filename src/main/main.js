@@ -22,8 +22,6 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/views/main.html'));
-  // Uncomment to open DevTools on startup
-  // mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(createWindow);
@@ -109,7 +107,6 @@ ipcMain.on('delete-file', (_, filename) => {
 ipcMain.on('open-file', (_, filename) => {
   const filePath = path.join(OUTPUT_DIR, filename);
   if (fs.existsSync(filePath)) {
-    // Option 1: Open the file
     shell.openPath(filePath);
   } else {
     dialog.showErrorBox('File Not Found', `The file ${filename} could not be found.`);
@@ -124,7 +121,6 @@ ipcMain.handle('download-file', async (_, filename) => {
       return { error: 'File not found' };
     }
     
-    // Show save dialog
     const saveDialog = await dialog.showSaveDialog({
       title: 'Save CSV File',
       defaultPath: path.join(app.getPath('downloads'), filename),
@@ -138,7 +134,6 @@ ipcMain.handle('download-file', async (_, filename) => {
       return { canceled: true };
     }
     
-    // Copy the file to the selected location
     fs.copyFileSync(filePath, saveDialog.filePath);
     
     return { success: true, savedPath: saveDialog.filePath };

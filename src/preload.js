@@ -1,6 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Set up the IPC listeners before exposing the API
 ipcRenderer.on('update-status', (_, statusData) => {
   window.dispatchEvent(new CustomEvent('update-status', { 
     detail: statusData 
