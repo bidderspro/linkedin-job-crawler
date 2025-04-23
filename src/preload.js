@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFile: (filename) => ipcRenderer.send('open-file', filename),
   downloadFile: (filename) => ipcRenderer.invoke('download-file', filename),
   readCsvFile: (filename) => ipcRenderer.invoke('read-csv-file', filename),
-  openExternal: (url) => ipcRenderer.send('open-external', url)
+  openExternal: (url) => ipcRenderer.send('open-external', url),
+  splashFinished: () => ipcRenderer.send('splash-finished')
 }); 

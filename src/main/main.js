@@ -9,11 +9,32 @@ const { formatBytes, OUTPUT_DIR, ensureOutputDir } = require('./utils');
 ensureOutputDir();
 
 let mainWindow;
+let splashWindow;
 
-function createWindow() {
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 500, 
+    height: 400,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, '../preload.js')
+    }
+  });
+
+  splashWindow.loadFile(path.join(__dirname, '../renderer/views/splash.html'));
+  splashWindow.center();
+}
+
+function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -22,9 +43,41 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/views/main.html'));
+  
+  mainWindow.once('ready-to-show', () => {
+    setTimeout(() => {
+      if (splashWindow) {
+        splashWindow.close();
+        splashWindow = null;
+      }
+      mainWindow.show();
+      mainWindow.center();
+    }, 500);
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createSplashWindow();
+  
+  setTimeout(() => {
+    createMainWindow();
+  }, 3000);
+});
+
+ipcMain.on('splash-finished', () => {
+  if (mainWindow) {
+    mainWindow.show();
+  }
+  
+  if (splashWindow) {
+    splashWindow.close();
+    splashWindow = null;
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -34,7 +87,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    createMainWindow();
   }
 });
 
