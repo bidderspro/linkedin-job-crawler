@@ -13,6 +13,12 @@
             <input type="text" id="keyword" placeholder="Job title">
             <input type="text" id="location" placeholder="Location">
             <input type="number" id="jobCount" value="10" min="1">
+            <select id="timeRange">
+                <option value="all" selected>Any time</option>
+                <option value="past_24h">Past 24 hours</option>
+                <option value="past_week">Past week</option>
+                <option value="past_month">Past month</option>
+            </select>
             <button id="startScrape">Search Jobs</button>
         </div>
 

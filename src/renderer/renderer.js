@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const keyword = document.getElementById('keyword').value;
     const location = document.getElementById('location').value;
     const jobCount = document.getElementById('jobCount').value;
+    const timeRange = document.getElementById('timeRange').value;
 
     if (!keyword || !location) {
       showStatus('Please fill in all fields', 'error');
@@ -20,7 +21,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = await window.electronAPI.startScrape({
         keyword,
         location,
-        jobCount: parseInt(jobCount)
+        jobCount: parseInt(jobCount),
+        timeRange
       });
 
       if (result.error) throw new Error(result.error);

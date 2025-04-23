@@ -184,6 +184,62 @@ function saveViewCounts() {
     console.log('Saved view counts:', viewCounts);
 }
 
+// Check if a job is recent (past 24 hours, past week, or past month)
+function getJobTimeRange(dateString) {
+    if (!dateString || dateString === 'Not available') return null;
+    
+    try {
+        const jobDate = new Date(dateString);
+        if (isNaN(jobDate.getTime())) return null;
+        
+        const now = new Date();
+        const diffTime = now - jobDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 1) {
+            return '24h';
+        } else if (diffDays <= 7) {
+            return 'week';
+        } else if (diffDays <= 30) {
+            return 'month';
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error parsing date:', error);
+        return null;
+    }
+}
+
+// Generate a time badge based on the time range
+function createTimeBadge(timeRange) {
+    if (!timeRange) return null;
+    
+    const badge = document.createElement('span');
+    badge.className = `job-time-badge job-time-badge-${timeRange}`;
+    
+    let tooltipText = '';
+    
+    switch (timeRange) {
+        case '24h':
+            badge.textContent = 'Last 24h';
+            tooltipText = 'This job was posted within the last 24 hours';
+            break;
+        case 'week':
+            badge.textContent = 'Past week';
+            tooltipText = 'This job was posted within the last week';
+            break;
+        case 'month':
+            badge.textContent = 'Past month';
+            tooltipText = 'This job was posted within the last month';
+            break;
+    }
+    
+    badge.title = tooltipText;
+    
+    return badge;
+}
+
 // Check if a job is recently posted (within the last 7 days)
 function isRecentJob(dateString) {
     if (!dateString || dateString === 'Not available') return false;
@@ -254,6 +310,48 @@ function updatePaginationControls() {
     pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${allData.length} records)`;
 }
 
+// Create a legend explaining the time range colors
+function createTimeRangeLegend() {
+    const legendContainer = document.createElement('div');
+    legendContainer.className = 'time-range-legend';
+    legendContainer.style.display = 'flex';
+    legendContainer.style.gap = '10px';
+    legendContainer.style.justifyContent = 'flex-end';
+    legendContainer.style.marginBottom = '10px';
+    legendContainer.style.flexWrap = 'wrap';
+    
+    const ranges = [
+        { range: '24h', label: 'Last 24 hours', color: '#10b981' },
+        { range: 'week', label: 'Past week', color: '#3b82f6' },
+        { range: 'month', label: 'Past month', color: '#ef4444' }
+    ];
+    
+    ranges.forEach(item => {
+        const legendItem = document.createElement('div');
+        legendItem.style.display = 'flex';
+        legendItem.style.alignItems = 'center';
+        legendItem.style.fontSize = '0.85rem';
+        
+        // Create dot similar to job indicators
+        const colorDot = document.createElement('span');
+        colorDot.style.display = 'inline-block';
+        colorDot.style.width = '10px';
+        colorDot.style.height = '10px';
+        colorDot.style.backgroundColor = item.color;
+        colorDot.style.marginRight = '5px';
+        colorDot.style.borderRadius = '50%';
+        
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        
+        legendItem.appendChild(colorDot);
+        legendItem.appendChild(label);
+        legendContainer.appendChild(legendItem);
+    });
+    
+    return legendContainer;
+}
+
 function renderTable() {
     const tableHeader = document.getElementById('tableHeader');
     const tableBody = document.getElementById('tableBody');
@@ -266,6 +364,15 @@ function renderTable() {
         showStatus('No data to display', 'error');
         return;
     }
+    
+    // Add time range legend
+    const tableContainer = document.querySelector('.table-container');
+    const existingLegend = document.querySelector('.time-range-legend');
+    if (existingLegend) {
+        existingLegend.remove();
+    }
+    const legend = createTimeRangeLegend();
+    tableContainer.parentNode.insertBefore(legend, tableContainer);
     
     // Define mandatory columns and preferred column order
     const mandatoryColumns = ['title', 'company', 'location', 'postedDate', 'link'];
@@ -325,28 +432,67 @@ function renderTable() {
             tr.classList.add('recent-job');
         }
         
+        // Get time range but don't apply background highlighting
+        const timeRange = getJobTimeRange(row.postedDate);
+        
         uniqueHeaders.forEach(header => {
             const td = document.createElement('td');
             
             // Special handling for title column and recent jobs
             if (header === 'title') {
-                // Create title content with green dot for recent jobs
-                if (isRecent) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'title-with-indicator';
-                    
+                const wrapper = document.createElement('div');
+                wrapper.className = 'title-with-indicator';
+                
+                // Add colored dot for different time ranges
+                if (timeRange) {
                     const dot = document.createElement('span');
                     dot.className = 'new-job-indicator';
-                    dot.title = 'Posted within the last 7 days';
                     
-                    const titleText = document.createElement('span');
-                    titleText.textContent = row[header] !== undefined ? row[header] : '';
+                    // Change dot color based on time range
+                    let dotColor = '';
+                    if (timeRange === '24h') {
+                        dotColor = '#10b981'; // Green
+                        dot.style.backgroundColor = dotColor;
+                        dot.title = 'Posted within the last 24 hours';
+                    } else if (timeRange === 'week') {
+                        dotColor = '#3b82f6'; // Blue
+                        dot.style.backgroundColor = dotColor;
+                        dot.title = 'Posted within the last week';
+                    } else if (timeRange === 'month') {
+                        dotColor = '#ef4444'; // Red
+                        dot.style.backgroundColor = dotColor;
+                        dot.title = 'Posted within the last month';
+                    }
+                    
+                    // Also update the pulse animation color
+                    const pulseElement = document.createElement('style');
+                    pulseElement.textContent = `
+                        .new-job-indicator[style*="background-color: ${dotColor}"]::after {
+                            background-color: ${dotColor}33; /* Add 33 for 20% opacity */
+                        }
+                    `;
+                    document.head.appendChild(pulseElement);
                     
                     wrapper.appendChild(dot);
-                    wrapper.appendChild(titleText);
-                    td.appendChild(wrapper);
-                } else {
-                    td.textContent = row[header] !== undefined ? row[header] : '';
+                }
+                
+                const titleText = document.createElement('span');
+                titleText.textContent = row[header] !== undefined ? row[header] : '';
+                
+                wrapper.appendChild(titleText);
+                td.appendChild(wrapper);
+            }
+            // Special handling for postedDate column to add badge
+            else if (header === 'postedDate') {
+                // Add the date text
+                td.textContent = row[header] !== undefined ? row[header] : '';
+                
+                // Add time range badge if applicable
+                if (timeRange) {
+                    const badge = createTimeBadge(timeRange);
+                    if (badge) {
+                        td.appendChild(badge);
+                    }
                 }
             }
             // Special handling for links

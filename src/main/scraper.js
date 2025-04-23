@@ -80,6 +80,7 @@ async function scrapeLinkedInJobs(options) {
   let browser;
   try {
     console.log("🚀 Starting LinkedIn scraper...");
+    console.log("Options:", options);
 
     // Launch browser with more resilient options
     if (
@@ -143,6 +144,27 @@ async function scrapeLinkedInJobs(options) {
     const maxPages = Math.ceil(Math.min(options.jobCount, 100) / 10);
     let consecutiveErrors = 0;
 
+    // Add time range parameter to the URL if specified
+    let timeRangeParam = '';
+    if (options.timeRange && options.timeRange !== 'all') {
+      // LinkedIn uses f_TPR parameter for time range filtering
+      // Values: r86400 (24h), r604800 (7d), r2592000 (30d)
+      switch (options.timeRange) {
+        case 'past_24h':
+          timeRangeParam = '&f_TPR=r86400';
+          break;
+        case 'past_week':
+          timeRangeParam = '&f_TPR=r604800';
+          break;
+        case 'past_month':
+          timeRangeParam = '&f_TPR=r2592000';
+          break;
+        default:
+          timeRangeParam = '';
+      }
+      console.log(`Applied time filter: ${options.timeRange}`);
+    }
+
     for (let pageNum = 0; pageNum < maxPages; pageNum++) {
       if (consecutiveErrors >= 3) {
         console.log("⚠️ Too many consecutive errors, stopping...");
@@ -152,7 +174,7 @@ async function scrapeLinkedInJobs(options) {
       const start = pageNum * 10;
       const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(
         options.keyword
-      )}&location=${encodeURIComponent(options.location)}&start=${start}`;
+      )}&location=${encodeURIComponent(options.location)}&start=${start}${timeRangeParam}`;
 
       console.log(`🌐 Fetching page ${pageNum + 1}...`);
 
@@ -500,13 +522,65 @@ async function scrapeLinkedInJobs(options) {
     console.log(`✅ Scraping complete. Found ${jobs.length} jobs.`);
     
     // Write to CSV and return results
+    let timeRangeSuffix = '';
+    if (options.timeRange && options.timeRange !== 'all') {
+      switch (options.timeRange) {
+        case 'past_24h':
+          timeRangeSuffix = '_24h';
+          break;
+        case 'past_week':
+          timeRangeSuffix = '_week';
+          break;
+        case 'past_month':
+          timeRangeSuffix = '_month';
+          break;
+      }
+    }
+    
     const filename = `jobs_${options.keyword
       .toLowerCase()
-      .replace(/\s+/g, '_')}_${Date.now()}.csv`;
+      .replace(/\s+/g, '_')}${timeRangeSuffix}_${Date.now()}.csv`;
     
-    await writeCsv(jobs, filename);
+    // Apply additional time-based filtering to ensure we only keep jobs in the selected time range
+    let filteredJobs = jobs;
+    if (options.timeRange && options.timeRange !== 'all') {
+      console.log(`Applying additional time-based filtering for: ${options.timeRange}`);
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      
+      filteredJobs = jobs.filter(job => {
+        // Skip jobs with unknown posting dates
+        if (!job.postedDate || job.postedDate === 'Not available') {
+          return true;
+        }
+        
+        try {
+          const jobDate = new Date(job.postedDate);
+          const diffTime = now - jobDate;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          switch (options.timeRange) {
+            case 'past_24h':
+              return diffDays <= 1;
+            case 'past_week':
+              return diffDays <= 7;
+            case 'past_month':
+              return diffDays <= 30;
+            default:
+              return true;
+          }
+        } catch (e) {
+          console.log(`Error parsing date: ${job.postedDate}`);
+          return true;
+        }
+      });
+      
+      console.log(`Filtered from ${jobs.length} to ${filteredJobs.length} jobs based on posting date`);
+    }
     
-    return { jobs, filename };
+    await writeCsv(filteredJobs, filename);
+    
+    return { jobs: filteredJobs, filename };
   } catch (error) {
     console.error("❌ Fatal scraping error:", error);
     return { error: `Scraping failed: ${error.message}` };

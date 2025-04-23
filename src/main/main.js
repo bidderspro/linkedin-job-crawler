@@ -41,7 +41,7 @@ app.on('activate', () => {
 });
 
 // IPC Handlers
-ipcMain.handle('start-scrape', async (_, { keyword, location, jobCount }) => {
+ipcMain.handle('start-scrape', async (_, { keyword, location, jobCount, timeRange }) => {
   try {
     mainWindow.webContents.send('update-status', { 
       message: 'Starting scraper...', 
@@ -51,7 +51,8 @@ ipcMain.handle('start-scrape', async (_, { keyword, location, jobCount }) => {
     const result = await scrapeLinkedInJobs({ 
       keyword, 
       location, 
-      jobCount: parseInt(jobCount) || 10 
+      jobCount: parseInt(jobCount) || 10,
+      timeRange: timeRange || 'all'
     });
     
     if (result.error) {

@@ -108,6 +108,22 @@ h2 {
 
 .search-box input[type="number"] {
   flex: 0.3;
+  width: 70px;
+}
+
+.search-box select {
+  padding: 10px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+  outline: none;
+  margin-right: 10px;
+}
+
+.search-box select:focus {
+  border-color: #4a4ad1;
+  box-shadow: 0 0 5px rgba(74, 74, 209, 0.3);
 }
 
 .search-box button {
@@ -605,7 +621,7 @@ th:nth-child(6), td:nth-child(6) { /* Link column */
   display: inline-block;
   width: 8px;
   height: 8px;
-  background-color: #10b981;
+  background-color: #10b981; /* Default to green, can be overridden in JavaScript */
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
@@ -616,13 +632,14 @@ th:nth-child(6), td:nth-child(6) { /* Link column */
   position: absolute;
   width: 12px;
   height: 12px;
-  background-color: rgba(16, 185, 129, 0.3);
+  background-color: rgba(16, 185, 129, 0.3); /* Semi-transparent version of the dot color */
   border-radius: 50%;
   top: -2px;
   left: -2px;
   animation: pulse 1.5s infinite ease-in-out;
 }
 
+/* Update pulse animation to work with any base color */
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -639,7 +656,7 @@ th:nth-child(6), td:nth-child(6) { /* Link column */
 }
 
 .new-job-indicator:hover::before {
-  content: "New job posted within the last 7 days";
+  content: attr(title); /* Use the title attribute as content */
   position: absolute;
   bottom: 15px;
   left: -10px;
@@ -656,4 +673,165 @@ th:nth-child(6), td:nth-child(6) { /* Link column */
 
 .recent-job td {
   color: var(--neutral-800);
+}
+
+/* Time range highlighting styles */
+/* Removing background styles for job ranges, keeping only the badges */
+
+/* Badge for job posting time */
+.job-time-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.job-time-badge-24h {
+  background-color: #10b981;
+  color: white;
+}
+
+.job-time-badge-week {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.job-time-badge-month {
+  background-color: #ef4444;
+  color: white;
+}
+
+/* Green dot indicator for new jobs */
+.title-with-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-job-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #10b981; /* Default to green, can be overridden in JavaScript */
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.new-job-indicator::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: rgba(16, 185, 129, 0.3); /* Semi-transparent version of the dot color */
+  border-radius: 50%;
+  top: -2px;
+  left: -2px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Update pulse animation to work with any base color */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+}
+
+.new-job-indicator:hover::before {
+  content: attr(title); /* Use the title attribute as content */
+  position: absolute;
+  bottom: 15px;
+  left: -10px;
+  background-color: var(--neutral-800);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.recent-job td {
+  color: var(--neutral-800);
+}
+
+/* Time range highlighting styles */
+.job-range-24h {
+  background-color: rgba(16, 185, 129, 0.15) !important; /* Green background */
+}
+
+.job-range-24h td {
+  color: #047857; /* Darker green for better contrast */
+  font-weight: 500;
+}
+
+.job-range-week {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* Blue background */
+}
+
+.job-range-week td {
+  color: #1d4ed8; /* Darker blue for better contrast */
+  font-weight: 500;
+}
+
+.job-range-month {
+  background-color: rgba(239, 68, 68, 0.1) !important; /* Red background */
+}
+
+.job-range-month td {
+  color: #b91c1c; /* Darker red for better contrast */
+  font-weight: 500;
+}
+
+/* Badge for job posting time */
+.job-time-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.job-time-badge-24h {
+  background-color: #10b981;
+  color: white;
+}
+
+.job-time-badge-week {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.job-time-badge-month {
+  background-color: #ef4444;
+  color: white;
+}
+
+/* Hover for job time ranges */
+tr.job-range-24h:hover {
+  background-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+tr.job-range-week:hover {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+tr.job-range-month:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
 } 
