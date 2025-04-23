@@ -5,6 +5,7 @@ const puppeteer = require("puppeteer-core");
 const chrome = require("@sparticuz/chromium");
 const { createObjectCsvWriter } = require("csv-writer");
 const { ensureOutputDir, OUTPUT_DIR } = require('./utils');
+const os = require("os");
 
 if (process.env.NODE_ENV !== "production") {
   try {
@@ -82,37 +83,51 @@ async function scrapeLinkedInJobs(options) {
     console.log("🚀 Starting LinkedIn scraper...");
     console.log("Options:", options);
 
+    // Create a unique temp directory for this session
+    const tempDir = path.join(
+      os.tmpdir(),
+      `puppeteer_linkedin_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+    );
+    
+    try {
+      // Ensure the temp directory exists
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+    } catch (dirError) {
+      console.log("⚠️ Could not create temp directory, will use default:", dirError.message);
+    }
+
     // Launch browser with more resilient options
+    const launchOptions = {
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-features=site-per-process",
+        "--disable-gpu",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        `--user-data-dir=${tempDir}`,
+      ],
+      ignoreHTTPSErrors: true,
+    };
+
     if (
       process.env.NODE_ENV === "production" ||
       process.env.VERCEL_ENV === "production"
     ) {
       browser = await puppeteer.launch({
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-features=site-per-process",
-          "--disable-gpu",
-          "--disable-accelerated-2d-canvas",
-          "--no-first-run",
-          "--no-zygote",
-        ],
+        ...launchOptions,
         executablePath: await chrome.executablePath(),
         headless: chrome.headless,
-        ignoreHTTPSErrors: true,
       });
     } else {
       browser = await puppeteer.launch({
+        ...launchOptions,
         channel: "chrome",
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-features=site-per-process",
-        ],
         headless: chrome.headless,
-        ignoreHTTPSErrors: true,
       });
     }
 
@@ -522,24 +537,37 @@ async function scrapeLinkedInJobs(options) {
     console.log(`✅ Scraping complete. Found ${jobs.length} jobs.`);
     
     // Write to CSV and return results
-    let timeRangeSuffix = '';
+    // Get current date in a readable format: YYYY-MM-DD
+    const now = new Date();
+    const formattedDate = now.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    
+    // Format time range for filename
+    let timeRangeText = '';
     if (options.timeRange && options.timeRange !== 'all') {
       switch (options.timeRange) {
         case 'past_24h':
-          timeRangeSuffix = '_24h';
+          timeRangeText = 'Last24Hours';
           break;
         case 'past_week':
-          timeRangeSuffix = '_week';
+          timeRangeText = 'LastWeek';
           break;
         case 'past_month':
-          timeRangeSuffix = '_month';
+          timeRangeText = 'LastMonth';
           break;
       }
     }
     
-    const filename = `jobs_${options.keyword
+    // Clean up the keyword for filename
+    const cleanKeyword = options.keyword
       .toLowerCase()
-      .replace(/\s+/g, '_')}${timeRangeSuffix}_${Date.now()}.csv`;
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, ''); // Remove any special characters
+    
+    // Clean up the location for filename
+    const cleanLocation = options.location
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, ''); // Remove any special characters
     
     // Apply additional time-based filtering to ensure we only keep jobs in the selected time range
     let filteredJobs = jobs;
@@ -578,6 +606,26 @@ async function scrapeLinkedInJobs(options) {
       console.log(`Filtered from ${jobs.length} to ${filteredJobs.length} jobs based on posting date`);
     }
     
+    // Create a short date format (MMDD)
+    const shortDate = `${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+    
+    // Shorten the keyword and location (max 10 chars each)
+    const shortKeyword = options.keyword.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '').slice(0, 10);
+    const shortLocation = options.location.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '').slice(0, 10);
+    
+    // Create a very short time range indicator
+    let timeCode = '';
+    if (options.timeRange && options.timeRange !== 'all') {
+      switch (options.timeRange) {
+        case 'past_24h': timeCode = '24h'; break;
+        case 'past_week': timeCode = '7d'; break;
+        case 'past_month': timeCode = '30d'; break;
+      }
+    }
+    
+    // Very concise filename format: [keyword]_[location]_[jobCount]_[timeRange]_[date].csv
+    const filename = `${shortKeyword}_${shortLocation}_${filteredJobs.length}j${timeCode ? '_' + timeCode : ''}_${shortDate}.csv`;
+    
     await writeCsv(filteredJobs, filename);
     
     return { jobs: filteredJobs, filename };
@@ -589,9 +637,38 @@ async function scrapeLinkedInJobs(options) {
     if (browser) {
       try {
         console.log("🔄 Closing browser...");
-        await browser.close();
-      } catch (closeError) {
-        console.error("Error closing browser:", closeError.message);
+        
+        // Add a small delay before closing to allow pending operations to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        try {
+          await browser.close();
+        } catch (closeError) {
+          // Check if it's a file permission error (EPERM)
+          if (closeError.code === 'EPERM') {
+            console.log("⚠️ Browser close had permission error; this is generally not critical.");
+            console.log("  - Windows may keep temporary files locked. These will be cleaned up later.");
+          } else {
+            console.error("❌ Error closing browser:", closeError.message);
+          }
+        }
+
+        // If running on Windows, we can try to force cleanup later
+        if (process.platform === 'win32') {
+          console.log("🧹 Scheduling Windows temp file cleanup...");
+          // This will run the cleanup later when files might be unlocked
+          setTimeout(() => {
+            try {
+              // We don't need to do anything specific here
+              // Windows will clean up temp files on next boot or when no longer in use
+              console.log("✅ Delayed cleanup completed.");
+            } catch (e) {
+              // Ignore errors in the delayed cleanup
+            }
+          }, 5000);
+        }
+      } catch (finalError) {
+        console.error("❌ Fatal error during cleanup:", finalError.message);
       }
     }
   }

@@ -226,26 +226,31 @@ h2 {
 }
 
 .status-bar {
-  margin-top: 20px;
+  margin: 15px 0;
   padding: 12px;
   border-radius: 8px;
   text-align: center;
   font-weight: 500;
+  transition: all 0.3s ease;
+  opacity: 1;
 }
 
 .status-bar.success {
   background-color: rgba(16, 185, 129, 0.1);
   color: var(--success-color);
+  border-left: 4px solid var(--success-color);
 }
 
 .status-bar.error {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--error-color);
+  border-left: 4px solid var(--error-color);
 }
 
 .status-bar.processing {
   background-color: rgba(80, 70, 229, 0.1);
   color: var(--primary-color);
+  border-left: 4px solid var(--primary-color);
 }
 
 .no-files {
@@ -366,8 +371,9 @@ tr:hover {
   border-radius: 30px;
   padding: 15px 15px;
   box-shadow: 0 8px 16px rgba(99, 102, 241, 0.2);
-  margin: 30px auto;
+  margin: 20px auto;
   max-width: 600px;
+  flex-wrap: wrap;
 }
 
 .modern-pagination .pagination {
@@ -375,6 +381,8 @@ tr:hover {
   padding: 0;
   display: flex;
   list-style: none;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .modern-pagination .page-item .page-link {
@@ -386,7 +394,7 @@ tr:hover {
   border-radius: 50%;
   margin: 0 2px;
   transition: var(--transition);
-  width: 46px;
+  width: 36px;
   height: 36px;
   display: flex;
   align-items: center;
@@ -410,8 +418,21 @@ tr:hover {
   pointer-events: none;
 }
 
+/* Remove page stats */
 .modern-pagination .page-stats {
   display: none;
+}
+
+@media (max-width: 576px) {
+  .modern-pagination {
+    padding: 12px 8px;
+  }
+  
+  .modern-pagination .page-item .page-link {
+    width: 30px;
+    height: 30px;
+    font-size: 0.9rem;
+  }
 }
 
 /* Sticky header table styles */
@@ -447,19 +468,6 @@ tr:hover {
 
 .modern-pagination-white .page-stats {
   color: var(--neutral-700);
-}
-
-/* Responsive pagination */
-@media (max-width: 576px) {
-  .modern-pagination {
-    flex-direction: column;
-    padding: 10px;
-  }
-  
-  .modern-pagination .page-stats {
-    margin-left: 0;
-    margin-top: 8px;
-  }
 }
 
 /* Styles for application count */
@@ -834,4 +842,23 @@ tr.job-range-week:hover {
 
 tr.job-range-month:hover {
   background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Results section styling */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.results-count {
+  font-size: 0.9rem;
+  color: var(--neutral-600);
+}
+
+.file-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 } 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>LinkedIn Job Scraper</title>
     <link rel="stylesheet" href="../assets/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
 </head>
 <body>
     <div class="container">
@@ -22,13 +23,26 @@
             <button id="startScrape">Search Jobs</button>
         </div>
 
-        <div class="results">
-            <h2>Saved Results</h2>
-            <div class="file-list" id="fileList"></div>
-        </div>
-
         <div class="status-bar" id="statusBar"></div>
+
+        <div class="results">
+            <div class="results-header">
+                <h2>Saved Results</h2>
+                <div class="results-count" id="resultsCount"></div>
+            </div>
+            <div class="file-list-container">
+                <div class="file-list" id="fileList"></div>
+                <!-- Pagination will be added here by JavaScript -->
+            </div>
+        </div>
     </div>
+    
+    <!-- For debugging purposes -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.message, e.filename, e.lineno);
+        });
+    </script>
     <script src="../renderer.js"></script>
 </body>
 </html>
