@@ -27,10 +27,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         timeRange
       });
 
-      if (result.error) throw new Error(result.error);
-      
-      showStatus(`Scraped ${result.jobs.length} jobs successfully!`, 'success');
-      refreshFileList();
+      if (result.error) {
+        // Check for network errors and provide retry option
+        if (result.error.includes('Internet connection error') || 
+            result.error.includes('Network error')) {
+          showNetworkError(result.error, async () => {
+            // Retry the scrape
+            showStatus('Retrying...', 'processing');
+            await startScrape({
+              keyword,
+              location,
+              jobCount: parseInt(jobCount),
+              timeRange
+            });
+          });
+        } else {
+          throw new Error(result.error);
+        }
+      } else {
+        showStatus(`Scraped ${result.jobs.length} jobs successfully!`, 'success');
+        refreshFileList();
+      }
     } catch (error) {
       showStatus(`Error: ${error.message}`, 'error');
     }
@@ -268,3 +285,43 @@ window.downloadFile = async (filename) => {
 window.viewFile = (filename) => {
   window.location.href = `detail.html?file=${encodeURIComponent(filename)}`;
 };
+
+// Function to handle network errors with retry capability
+function showNetworkError(errorMessage, retryCallback) {
+  const statusArea = document.getElementById('statusArea');
+  
+  // Create network error UI
+  statusArea.className = 'error';
+  statusArea.innerHTML = `
+    <div class="network-error">
+      <p><strong>Network Error:</strong> ${errorMessage}</p>
+      <p>Make sure you're connected to the internet.</p>
+      <button id="retryButton" class="retry-button">Retry Connection</button>
+    </div>
+  `;
+  
+  // Add retry button listener
+  document.getElementById('retryButton').addEventListener('click', () => {
+    if (typeof retryCallback === 'function') {
+      retryCallback();
+    }
+  });
+}
+
+// Helper function to start a scrape
+async function startScrape(options) {
+  try {
+    const result = await window.electronAPI.startScrape(options);
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    showStatus(`Scraped ${result.jobs.length} jobs successfully!`, 'success');
+    refreshFileList();
+    return result;
+  } catch (error) {
+    showStatus(`Error: ${error.message}`, 'error');
+    throw error;
+  }
+}

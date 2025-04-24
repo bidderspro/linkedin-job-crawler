@@ -91,9 +91,63 @@ app.on('activate', () => {
   }
 });
 
+// Add this helper function near the top of the file after imports
+function checkInternetConnection() {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Connection timeout'));
+    }, 10000);
+    
+    require('dns').lookup('www.linkedin.com', (err) => {
+      clearTimeout(timeout);
+      if (err && err.code === "ENOTFOUND") {
+        reject(new Error('No internet connection'));
+      } else if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 // IPC Handlers
 ipcMain.handle('start-scrape', async (_, { keyword, location, jobCount, timeRange }) => {
   try {
+    mainWindow.webContents.send('update-status', { 
+      message: 'Checking internet connection...', 
+      type: 'processing' 
+    });
+    
+    // Check internet connectivity first with retries
+    let connectionAttempts = 0;
+    const maxConnectionRetries = 3;
+    let isConnected = false;
+    
+    while (!isConnected && connectionAttempts < maxConnectionRetries) {
+      try {
+        connectionAttempts++;
+        await checkInternetConnection();
+        isConnected = true;
+      } catch (connectionError) {
+        mainWindow.webContents.send('update-status', { 
+          message: `Internet connection check failed (attempt ${connectionAttempts}/${maxConnectionRetries}). Retrying...`, 
+          type: 'warning' 
+        });
+        
+        if (connectionAttempts >= maxConnectionRetries) {
+          mainWindow.webContents.send('update-status', { 
+            message: `Error: No internet connection. Please connect to the internet and try again.`, 
+            type: 'error' 
+          });
+          return { error: 'Internet connection error: Please check your network connection and try again.' };
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+    
     mainWindow.webContents.send('update-status', { 
       message: 'Starting scraper...', 
       type: 'processing' 
@@ -121,6 +175,21 @@ ipcMain.handle('start-scrape', async (_, { keyword, location, jobCount, timeRang
     
     return result;
   } catch (error) {
+    // Enhanced network error detection
+    if (error.message.includes('net::ERR_INTERNET_DISCONNECTED') || 
+        error.message.includes('net::ERR_PROXY_CONNECTION_FAILED') ||
+        error.message.includes('net::ERR_NAME_NOT_RESOLVED') ||
+        error.message.includes('net::ERR_CONNECTION_RESET') ||
+        error.message.includes('net::ERR_NETWORK_CHANGED') ||
+        error.message.includes('net::ERR_CONNECTION_REFUSED')) {
+      const errorMsg = 'Network error: Please check your internet connection and try again.';
+      mainWindow.webContents.send('update-status', { 
+        message: `Error: ${errorMsg}`, 
+        type: 'error' 
+      });
+      return { error: errorMsg };
+    }
+    
     mainWindow.webContents.send('update-status', { 
       message: `Error: ${error.message}`, 
       type: 'error' 

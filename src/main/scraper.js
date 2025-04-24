@@ -76,12 +76,90 @@ function extractPostDate(relativeTime) {
   return postedDate.toISOString().split('T')[0];
 }
 
+// Helper function to check if a file exists
+const fileExists = (filePath) => {
+  try {
+    return fs.existsSync(filePath);
+  } catch (err) {
+    return false;
+  }
+};
+
+// Get Chrome executable path based on the platform
+const findChromeExecutable = () => {
+  console.log("Attempting to locate Chrome executable...");
+  const platform = process.platform;
+  
+  let possiblePaths = [];
+  
+  if (platform === 'win32') {
+    possiblePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${process.env.ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe`,
+      `${process.env['ProgramFiles(x86)']}\\Google\\Chrome\\Application\\chrome.exe`
+    ];
+  } else if (platform === 'darwin') {
+    possiblePaths = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+      `${process.env.HOME}/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+    ];
+  } else {
+    possiblePaths = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser'
+    ];
+  }
+  
+  // Find the first path that exists
+  for (const path of possiblePaths) {
+    if (path && fileExists(path)) {
+      console.log(`Found Chrome at: ${path}`);
+      return path;
+    }
+  }
+  
+  console.log("Chrome executable not found in standard locations");
+  return null;
+};
+
+// Check if internet is available
+async function checkInternetConnection() {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('Connection timeout'));
+    }, 10000);
+    
+    require('dns').lookup('www.linkedin.com', (err) => {
+      clearTimeout(timeout);
+      if (err && err.code === "ENOTFOUND") {
+        reject(new Error('No internet connection'));
+      } else if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 // Main scraping function
 async function scrapeLinkedInJobs(options) {
   let browser;
   try {
     console.log("🚀 Starting LinkedIn scraper...");
     console.log("Options:", options);
+
+    // Check internet connection before proceeding
+    try {
+      await checkInternetConnection();
+    } catch (connectionError) {
+      return { error: "Internet connection error: Please check your network connection and try again." };
+    }
 
     // Create a unique temp directory for this session
     const tempDir = path.join(
@@ -118,17 +196,49 @@ async function scrapeLinkedInJobs(options) {
       process.env.NODE_ENV === "production" ||
       process.env.VERCEL_ENV === "production"
     ) {
+      console.log("Using production Chromium configuration");
       browser = await puppeteer.launch({
         ...launchOptions,
         executablePath: await chrome.executablePath(),
         headless: chrome.headless,
       });
     } else {
-      browser = await puppeteer.launch({
-        ...launchOptions,
-        channel: "chrome",
-        headless: chrome.headless,
-      });
+      try {
+        // Try to use system Chrome first
+        const chromePath = findChromeExecutable();
+        if (chromePath) {
+          console.log(`Launching browser with system Chrome: ${chromePath}`);
+          browser = await puppeteer.launch({
+            ...launchOptions,
+            executablePath: chromePath,
+            headless: true,
+          });
+        } else {
+          // Fall back to installed Chrome via channel option
+          console.log("Trying to launch with Chrome channel");
+          browser = await puppeteer.launch({
+            ...launchOptions,
+            channel: "chrome",
+            headless: true,
+          });
+        }
+      } catch (browserError) {
+        console.log(`Error launching Chrome: ${browserError.message}`);
+        console.log("Falling back to downloaded Chromium");
+        
+        // As a last resort, use downloaded Chromium
+        try {
+          const executablePath = await chrome.executablePath();
+          console.log(`Using downloaded Chromium at: ${executablePath}`);
+          browser = await puppeteer.launch({
+            ...launchOptions,
+            executablePath,
+            headless: true,
+          });
+        } catch (fallbackError) {
+          throw new Error(`Failed to launch browser: ${fallbackError.message}. Please ensure Chrome is installed or check your PATH.`);
+        }
+      }
     }
 
     // Create page with proper error handling
@@ -199,11 +309,53 @@ async function scrapeLinkedInJobs(options) {
           throw new Error("Browser disconnected unexpectedly");
         }
 
-        // Use a simpler loading strategy
-        await page.goto(url, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000,
-        });
+        // Add retry logic for navigation
+        let retryCount = 0;
+        const maxRetries = 5; // Increased from 3 to 5
+        let navigationSuccess = false;
+        
+        while (retryCount < maxRetries && !navigationSuccess) {
+          try {
+            // Use a simpler loading strategy
+            await page.goto(url, {
+              waitUntil: "domcontentloaded",
+              timeout: 60000,
+            });
+            navigationSuccess = true;
+          } catch (navError) {
+            retryCount++;
+            console.log(`Navigation attempt ${retryCount} failed: ${navError.message}`);
+            
+            if (navError.message.includes('net::ERR_INTERNET_DISCONNECTED') || 
+                navError.message.includes('net::ERR_NETWORK_CHANGED') ||
+                navError.message.includes('net::ERR_CONNECTION_RESET') ||
+                navError.message.includes('net::ERR_NAME_NOT_RESOLVED') ||
+                navError.message.includes('net::ERR_CONNECTION_REFUSED') ||
+                navError.message.includes('net::ERR_PROXY_CONNECTION_FAILED')) {
+              console.log(`Network error detected, waiting before retry...`);
+              // Wait longer between retries for network issues - increased from 5000 to 8000ms
+              await new Promise((resolve) => setTimeout(resolve, 8000));
+              
+              // Check internet connection again
+              try {
+                await checkInternetConnection();
+                console.log("Internet connection verified, retrying...");
+              } catch (connectionError) {
+                console.log("Internet connection check failed:", connectionError.message);
+                // Wait a bit longer if connection check fails
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+              }
+            } else {
+              // For other errors, wait less time
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+            
+            // On last retry, throw the error
+            if (retryCount === maxRetries) {
+              throw new Error(`Failed to load page after ${maxRetries} attempts: ${navError.message}`);
+            }
+          }
+        }
 
         // Add a small delay for stability
         await new Promise((resolve) => setTimeout(resolve, 1000));

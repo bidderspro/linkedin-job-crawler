@@ -861,4 +861,38 @@ tr.job-range-month:hover {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+/* Network error styles */
+.network-error {
+  padding: 15px;
+  border-radius: 5px;
+  background-color: #fff3f3;
+  border: 1px solid #ffcaca;
+  margin-bottom: 20px;
+}
+
+.network-error p {
+  margin: 5px 0;
+  color: #d32f2f;
+}
+
+.retry-button {
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.retry-button:hover {
+  background-color: #0b7dda;
+}
+
+.retry-button:active {
+  background-color: #0a6fc2;
 } 
